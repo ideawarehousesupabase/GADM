@@ -22,6 +22,8 @@ export const Navbar = () => {
     navigate("/");
   };
 
+  const isDesigner = user?.role === "designer";
+
   return (
     <header className="sticky top-0 z-50 w-full glass">
       <div className="container flex h-16 items-center justify-between">
@@ -39,15 +41,23 @@ export const Navbar = () => {
           <Link to="/marketplace">
             <Button variant="ghost" size="sm">Marketplace</Button>
           </Link>
-          {user && (
+          {user && isDesigner && (
             <>
-              <Link to="/dashboard">
-                <Button variant="ghost" size="sm">Dashboard</Button>
-              </Link>
               <Link to="/train-model">
                 <Button variant="ghost" size="sm">Train AI</Button>
               </Link>
+              <Link to="/my-listed-assets">
+                <Button variant="ghost" size="sm">Assets</Button>
+              </Link>
+              <Link to="/requests">
+                <Button variant="ghost" size="sm">Requests</Button>
+              </Link>
             </>
+          )}
+          {user && !isDesigner && (
+            <Link to="/my-assets">
+              <Button variant="ghost" size="sm">My Assets</Button>
+            </Link>
           )}
         </nav>
 
@@ -57,6 +67,9 @@ export const Navbar = () => {
               <>
                 <span className="hidden sm:block text-sm text-muted-foreground">
                   {user.name}
+                </span>
+                <span className="hidden sm:block px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent/20 text-accent">
+                  {isDesigner ? "Designer" : "Buyer"}
                 </span>
                 <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
                   <LogOut className="h-4 w-4" />
@@ -92,15 +105,23 @@ export const Navbar = () => {
             <Link to="/marketplace" onClick={() => setOpen(false)}>
               <Button variant="ghost" className="w-full justify-start">Marketplace</Button>
             </Link>
-            {user && (
+            {user && isDesigner && (
               <>
-                <Link to="/dashboard" onClick={() => setOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start">Dashboard</Button>
-                </Link>
                 <Link to="/train-model" onClick={() => setOpen(false)}>
                   <Button variant="ghost" className="w-full justify-start">Train AI</Button>
                 </Link>
+                <Link to="/my-listed-assets" onClick={() => setOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start">Assets</Button>
+                </Link>
+                <Link to="/requests" onClick={() => setOpen(false)}>
+                  <Button variant="ghost" className="w-full justify-start">Requests</Button>
+                </Link>
               </>
+            )}
+            {user && !isDesigner && (
+              <Link to="/my-assets" onClick={() => setOpen(false)}>
+                <Button variant="ghost" className="w-full justify-start">My Assets</Button>
+              </Link>
             )}
             <div className="pt-2 mt-2 border-t border-border/50">
               {user ? (

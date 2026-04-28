@@ -11,6 +11,10 @@ import AssetDetail from "./pages/AssetDetail";
 import Dashboard from "./pages/Dashboard";
 import Designer from "./pages/Designer";
 import TrainModel from "./pages/TrainModel";
+import Payment from "./pages/Payment";
+import MyAssets from "./pages/MyAssets";
+import MyListedAssets from "./pages/MyListedAssets";
+import Requests from "./pages/Requests";
 import NotFound from "./pages/NotFound.tsx";
 import { ScrollToTop } from "./components/ScrollToTop";
 
@@ -32,6 +36,10 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/designer/:id" element={<Designer />} />
             <Route path="/train-model" element={<TrainModel />} />
+            <Route path="/payment/:id" element={<Payment />} />
+            <Route path="/my-assets" element={<MyAssets />} />
+            <Route path="/my-listed-assets" element={<MyListedAssets />} />
+            <Route path="/requests" element={<Requests />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

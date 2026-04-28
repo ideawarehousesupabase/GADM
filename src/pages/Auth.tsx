@@ -14,21 +14,37 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [role, setRole] = useState<"designer" | "buyer">("designer");
   const [loading, setLoading] = useState(false);
-  const { login } = useApp();
+  const { login, signup } = useApp();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { toast.error("Please fill all fields"); return; }
     if (password.length < 6) { toast.error("Password must be at least 6 characters"); return; }
+    if (mode === "signup" && !name.trim()) { toast.error("Please enter your name"); return; }
+
     setLoading(true);
-    setTimeout(() => {
-      login(email, mode === "signup" ? name : undefined);
-      toast.success(mode === "login" ? "Logged in successfully" : "Account created — welcome!");
+    try {
+      if (mode === "signup") {
+        await signup(name.trim(), email, password, role);
+        toast.success("Account created — welcome!");
+        // Redirect based on selected role
+        navigate(role === "designer" ? "/train-model" : "/marketplace");
+      } else {
+        await login(email, password);
+        toast.success("Logged in successfully");
+        // Role is set in context after login, read from localStorage
+        const stored = localStorage.getItem("gadm_user");
+        const userData = stored ? JSON.parse(stored) : null;
+        navigate(userData?.role === "designer" ? "/train-model" : "/marketplace");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Authentication failed");
+    } finally {
       setLoading(false);
-      navigate("/marketplace");
-    }, 600);
+    }
   };
 
   return (
@@ -63,10 +79,27 @@ const Auth = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === "signup" && (
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="Ada Lovelace" />
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Name</Label>
+                    <Input id="name" value={name} onChange={e => setName(e.target.value)} placeholder="Ada Lovelace" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>I am a</Label>
+                    <div className="flex gap-2 p-1 bg-secondary rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => setRole("designer")}
+                        className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${role === "designer" ? "bg-accent text-accent-foreground shadow-cyan" : "text-muted-foreground"}`}
+                      >Designer</button>
+                      <button
+                        type="button"
+                        onClick={() => setRole("buyer")}
+                        className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${role === "buyer" ? "bg-accent text-accent-foreground shadow-cyan" : "text-muted-foreground"}`}
+                      >Buyer</button>
+                    </div>
+                  </div>
+                </>
               )}
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>

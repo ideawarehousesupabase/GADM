@@ -1,21 +1,70 @@
 import { useParams, Link, useNavigate, Navigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { assets } from "@/data/assets";
 import { useApp } from "@/context/AppContext";
 import { toast } from "sonner";
-import { Download, Sparkles, Heart, ArrowLeft, Check } from "lucide-react";
+import { Download, Sparkles, Heart, ArrowLeft, Check, MessageSquarePlus, Send, Loader2 } from "lucide-react";
 import { AssetCard } from "@/components/AssetCard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getAssetById, createRequest, AssetDoc } from "@/lib/firestore";
 
 const AssetDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const asset = assets.find(a => a.id === id);
-  const { user, purchase, purchased, favorites, toggleFavorite } = useApp();
+  const { user, purchased, favorites, toggleFavorite } = useApp();
   const [generating, setGenerating] = useState(false);
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [requestMessage, setRequestMessage] = useState("");
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [firestoreAsset, setFirestoreAsset] = useState<AssetDoc | null>(null);
+  const [loadingAsset, setLoadingAsset] = useState(false);
+
+  // Try to find in static assets first
+  const staticAsset = assets.find(a => a.id === id);
+
+  // If not found in static, try Firestore
+  useEffect(() => {
+    if (!staticAsset && id) {
+      setLoadingAsset(true);
+      getAssetById(id)
+        .then(doc => setFirestoreAsset(doc))
+        .catch(() => {})
+        .finally(() => setLoadingAsset(false));
+    }
+  }, [id, staticAsset]);
 
   if (!user) return <Navigate to="/auth" replace />;
+
+  if (loadingAsset) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="container py-24 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading asset...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Build a unified asset object
+  const asset = staticAsset
+    ? staticAsset
+    : firestoreAsset
+      ? {
+          id: firestoreAsset.id,
+          title: firestoreAsset.title,
+          description: firestoreAsset.description || "",
+          price: firestoreAsset.price,
+          image: firestoreAsset.image_url,
+          category: firestoreAsset.category || "3D",
+          style: firestoreAsset.style || "Fantasy",
+          designer: firestoreAsset.designer_name || "Unknown",
+          designerId: firestoreAsset.user_id,
+        }
+      : null;
 
   if (!asset) {
     return (
@@ -34,13 +83,8 @@ const AssetDetail = () => {
   const similar = assets.filter(a => a.id !== asset.id && a.style === asset.style).slice(0, 3);
 
   const handleBuy = () => {
-    if (!user) {
-      toast.error("Please log in to purchase");
-      navigate("/auth");
-      return;
-    }
-    purchase(asset.id);
-    toast.success("Asset purchased successfully", { description: `${asset.title} added to your library.` });
+    // Navigate to payment page instead of direct purchase
+    navigate(`/payment/${asset.id}`);
   };
 
   const handleGenerate = () => {
@@ -51,6 +95,32 @@ const AssetDetail = () => {
       toast.dismiss(loadingId);
       toast.success("4 similar assets generated successfully");
     }, 2500);
+  };
+
+  const handleRequestCustomization = async () => {
+    if (!requestMessage.trim()) {
+      toast.error("Please enter a message");
+      return;
+    }
+    setSubmittingRequest(true);
+    try {
+      await createRequest({
+        user_id: user.id,
+        asset_id: asset.id,
+        message: requestMessage.trim(),
+      });
+      toast.success("Customization request submitted!");
+      setRequestMessage("");
+      setShowRequestForm(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit request");
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
+
+  const handleDownload = () => {
+    toast.success("Download started", { description: `Downloading ${asset.title}…` });
   };
 
   return (
@@ -108,13 +178,60 @@ const AssetDetail = () => {
               </div>
 
               <div className="flex gap-3">
-                <Button variant="outline" size="sm" disabled className="flex-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  disabled={!isPurchased}
+                  onClick={handleDownload}
+                >
                   <Download className="h-4 w-4" /> Download {!isPurchased && "(buy first)"}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => toggleFavorite(asset.id)}>
                   <Heart className={`h-4 w-4 ${isFav ? "fill-primary text-primary" : ""}`} />
                 </Button>
               </div>
+            </div>
+
+            {/* Request Customization */}
+            <div className="glass rounded-xl p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-display font-semibold">Need changes?</h3>
+                  <p className="text-sm text-muted-foreground">Request a custom version of this asset.</p>
+                </div>
+                <Button
+                  variant="neon"
+                  size="sm"
+                  onClick={() => setShowRequestForm(!showRequestForm)}
+                >
+                  <MessageSquarePlus className="h-4 w-4" />
+                  {showRequestForm ? "Cancel" : "Request Customization"}
+                </Button>
+              </div>
+              {showRequestForm && (
+                <div className="space-y-3 animate-fade-up">
+                  <Textarea
+                    placeholder="Describe the changes you'd like (e.g. different color, add effects, resize)…"
+                    rows={3}
+                    value={requestMessage}
+                    onChange={(e) => setRequestMessage(e.target.value)}
+                  />
+                  <Button
+                    variant="hero"
+                    size="sm"
+                    onClick={handleRequestCustomization}
+                    disabled={submittingRequest}
+                    className="w-full"
+                  >
+                    {submittingRequest ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</>
+                    ) : (
+                      <><Send className="h-4 w-4" /> Submit Request</>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-3 text-sm">
