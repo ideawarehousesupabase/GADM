@@ -7,6 +7,7 @@ import {
   query,
   where,
   orderBy,
+  updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -356,4 +357,24 @@ export async function getRequestsForAssets(
     results.push(...snap.docs.map((d) => ({ id: d.id, ...d.data() } as RequestDoc)));
   }
   return results;
+}
+
+// ─── CHANGE PASSWORD ─────────────────────────────────────────────────
+
+export async function changePassword(
+  email: string,
+  oldPassword: string,
+  newPassword: string
+): Promise<void> {
+  const q = query(collection(db, "users"), where("email", "==", email));
+  const snap = await getDocs(q);
+  if (snap.empty) throw new Error("No account found with this email");
+
+  const userDoc = snap.docs[0];
+  const data = userDoc.data();
+  const valid = await bcrypt.compare(oldPassword, data.password_hash);
+  if (!valid) throw new Error("Old password is incorrect");
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+  await updateDoc(doc(db, "users", userDoc.id), { password_hash: newHash });
 }

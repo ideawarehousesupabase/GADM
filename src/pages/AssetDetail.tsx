@@ -80,10 +80,16 @@ const AssetDetail = () => {
 
   const isPurchased = purchased.includes(asset.id);
   const isFav = favorites.includes(asset.id);
+  const isOwner = asset.designerId === user.id;
+  const isBuyer = user.role === "buyer";
+  const canBuy = isBuyer && !isOwner && !isPurchased;
   const similar = assets.filter(a => a.id !== asset.id && a.style === asset.style).slice(0, 3);
 
   const handleBuy = () => {
-    // Navigate to payment page instead of direct purchase
+    if (!isBuyer || isOwner) {
+      toast.error("You cannot purchase your own assets");
+      return;
+    }
     navigate(`/payment/${asset.id}`);
   };
 
@@ -163,15 +169,19 @@ const AssetDetail = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                {isPurchased ? (
+                {isOwner ? (
+                  <Button variant="outline" size="lg" className="flex-1" disabled>
+                    Your Asset
+                  </Button>
+                ) : isPurchased ? (
                   <Button variant="hero" size="lg" className="flex-1" disabled>
                     <Check className="h-4 w-4" /> Already owned
                   </Button>
-                ) : (
+                ) : canBuy ? (
                   <Button variant="hero" size="lg" className="flex-1" onClick={handleBuy}>
                     Buy Now
                   </Button>
-                )}
+                ) : null}
                 <Button variant="neon" size="lg" onClick={handleGenerate} disabled={generating}>
                   <Sparkles className="h-4 w-4" /> {generating ? "Generating..." : "Generate Similar"}
                 </Button>

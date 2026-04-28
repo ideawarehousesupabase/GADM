@@ -48,9 +48,9 @@ const Payment = () => {
   }
 
   const asset = staticAsset
-    ? { id: staticAsset.id, title: staticAsset.title, price: staticAsset.price, image: staticAsset.image }
+    ? { id: staticAsset.id, title: staticAsset.title, price: staticAsset.price, image: staticAsset.image, user_id: (staticAsset as any).designerId || "" }
     : firestoreAsset
-      ? { id: firestoreAsset.id, title: firestoreAsset.title, price: firestoreAsset.price, image: firestoreAsset.image_url }
+      ? { id: firestoreAsset.id, title: firestoreAsset.title, price: firestoreAsset.price, image: firestoreAsset.image_url, user_id: firestoreAsset.user_id }
       : null;
 
   if (!asset) {
@@ -83,6 +83,13 @@ const Payment = () => {
 
     setProcessing(true);
     try {
+      // Safety check: block self-purchase
+      if (asset.user_id && asset.user_id === user.id) {
+        toast.error("You cannot purchase your own assets");
+        setProcessing(false);
+        return;
+      }
+
       // Simulate processing delay
       await new Promise(r => setTimeout(r, 1500));
 
@@ -96,7 +103,7 @@ const Payment = () => {
       addPurchased(asset.id);
       await refreshPurchased();
       toast.success("Payment successful!", { description: `${asset.title} is now in your library.` });
-      navigate("/my-assets");
+      navigate("/dashboard");
     } catch (err: any) {
       toast.error(err.message || "Payment failed");
     } finally {
