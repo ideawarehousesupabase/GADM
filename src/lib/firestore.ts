@@ -109,11 +109,16 @@ export async function createModel(
 export async function getUserModels(userId: string): Promise<ModelDoc[]> {
   const q = query(
     collection(db, "models"),
-    where("user_id", "==", userId),
-    orderBy("created_at", "desc")
+    where("user_id", "==", userId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as ModelDoc));
+  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ModelDoc));
+  docs.sort((a, b) => {
+    const ta = a.created_at?.toMillis?.() || 0;
+    const tb = b.created_at?.toMillis?.() || 0;
+    return tb - ta;
+  });
+  return docs;
 }
 
 // ─── TRAINING DATA ───────────────────────────────────────────────────
@@ -200,9 +205,14 @@ export async function createAsset(data: {
 }
 
 export async function getAllAssets(): Promise<AssetDoc[]> {
-  const q = query(collection(db, "assets"), orderBy("created_at", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as AssetDoc));
+  const snap = await getDocs(collection(db, "assets"));
+  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AssetDoc));
+  docs.sort((a, b) => {
+    const ta = a.created_at?.toMillis?.() || 0;
+    const tb = b.created_at?.toMillis?.() || 0;
+    return tb - ta;
+  });
+  return docs;
 }
 
 export async function getAssetById(assetId: string): Promise<AssetDoc | null> {
@@ -212,13 +222,31 @@ export async function getAssetById(assetId: string): Promise<AssetDoc | null> {
 }
 
 export async function getUserAssets(userId: string): Promise<AssetDoc[]> {
+  // No orderBy to avoid requiring a Firestore composite index
   const q = query(
     collection(db, "assets"),
-    where("user_id", "==", userId),
-    orderBy("created_at", "desc")
+    where("user_id", "==", userId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as AssetDoc));
+  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as AssetDoc));
+  // Sort client-side by created_at descending
+  docs.sort((a, b) => {
+    const ta = a.created_at?.toMillis?.() || 0;
+    const tb = b.created_at?.toMillis?.() || 0;
+    return tb - ta;
+  });
+  return docs;
+}
+
+export async function getTransactionCountForAsset(
+  assetId: string
+): Promise<number> {
+  const q = query(
+    collection(db, "transactions"),
+    where("asset_id", "==", assetId)
+  );
+  const snap = await getDocs(q);
+  return snap.size;
 }
 
 // ─── TRANSACTIONS ────────────────────────────────────────────────────
@@ -255,11 +283,16 @@ export async function getUserTransactions(
 ): Promise<TransactionDoc[]> {
   const q = query(
     collection(db, "transactions"),
-    where("user_id", "==", userId),
-    orderBy("created_at", "desc")
+    where("user_id", "==", userId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as TransactionDoc));
+  const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() } as TransactionDoc));
+  docs.sort((a, b) => {
+    const ta = a.created_at?.toMillis?.() || 0;
+    const tb = b.created_at?.toMillis?.() || 0;
+    return tb - ta;
+  });
+  return docs;
 }
 
 export async function isAssetPurchased(

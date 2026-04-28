@@ -55,7 +55,7 @@ export const Navbar = () => {
             </>
           )}
           {user && !isDesigner && (
-            <Link to="/my-assets">
+            <Link to="/dashboard">
               <Button variant="ghost" size="sm">My Assets</Button>
             </Link>
           )}
@@ -119,7 +119,7 @@ export const Navbar = () => {
               </>
             )}
             {user && !isDesigner && (
-              <Link to="/my-assets" onClick={() => setOpen(false)}>
+              <Link to="/dashboard" onClick={() => setOpen(false)}>
                 <Button variant="ghost" className="w-full justify-start">My Assets</Button>
               </Link>
             )}

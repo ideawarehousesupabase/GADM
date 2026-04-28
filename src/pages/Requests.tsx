@@ -2,21 +2,27 @@ import { Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { useApp } from "@/context/AppContext";
-import { getRequestsForAssets, RequestDoc } from "@/lib/firestore";
+import { getUserAssets, getRequestsForAssets, RequestDoc } from "@/lib/firestore";
 import { MessageSquare, Loader2, Clock } from "lucide-react";
 
 const Requests = () => {
-  const { user, myAssets } = useApp();
+  const { user } = useApp();
   const [requests, setRequests] = useState<(RequestDoc & { assetTitle: string })[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchRequests = async () => {
-      if (!user || myAssets.length === 0) { setLoading(false); return; }
+      if (!user) { setLoading(false); return; }
       try {
-        const assetIds = myAssets.map(a => a.id);
+        // Fetch designer's assets directly from Firestore
+        const assets = await getUserAssets(user.id);
+        if (assets.length === 0) { setLoading(false); return; }
+
+        const assetIds = assets.map(a => a.id);
+        const assetMap = new Map(assets.map(a => [a.id, a.title]));
+
+        // Fetch requests for those assets
         const reqs = await getRequestsForAssets(assetIds);
-        const assetMap = new Map(myAssets.map(a => [a.id, a.title]));
         const enriched = reqs.map(r => ({
           ...r,
           assetTitle: assetMap.get(r.asset_id) || "Unknown Asset",
@@ -29,7 +35,7 @@ const Requests = () => {
       }
     };
     fetchRequests();
-  }, [user, myAssets]);
+  }, [user]);
 
   if (!user) return <Navigate to="/auth" replace />;
   if (user.role !== "designer") return <Navigate to="/marketplace" replace />;

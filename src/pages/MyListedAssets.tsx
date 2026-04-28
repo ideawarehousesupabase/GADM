@@ -1,24 +1,61 @@
 import { Navigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/context/AppContext";
-import { ShoppingBag, Sparkles, Plus } from "lucide-react";
+import { getUserAssets, getTransactionCountForAsset, AssetDoc } from "@/lib/firestore";
+import { ShoppingBag, Sparkles, Plus, Loader2, Users } from "lucide-react";
+
+interface ListedAsset {
+  id: string;
+  title: string;
+  price: number;
+  image: string;
+  style: string;
+  category: string;
+  model_id: string;
+  purchases: number;
+}
 
 const MyListedAssets = () => {
-  const { user, myAssets } = useApp();
+  const { user } = useApp();
+  const [listedAssets, setListedAssets] = useState<ListedAsset[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAssets = async () => {
+      if (!user) { setLoading(false); return; }
+      try {
+        const assets = await getUserAssets(user.id);
+        // Fetch purchase counts for each asset
+        const withCounts = await Promise.all(
+          assets.map(async (a) => {
+            let purchases = 0;
+            try { purchases = await getTransactionCountForAsset(a.id); } catch {}
+            return {
+              id: a.id,
+              title: a.title,
+              price: a.price,
+              image: a.image_url,
+              style: a.style || "Fantasy",
+              category: a.category || "3D",
+              model_id: a.model_id,
+              purchases,
+            };
+          })
+        );
+        setListedAssets(withCounts);
+      } catch {
+        // silently fail
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAssets();
+  }, [user]);
 
   if (!user) return <Navigate to="/auth" replace />;
   if (user.role !== "designer") return <Navigate to="/marketplace" replace />;
-
-  const listedAssets = myAssets.map(a => ({
-    id: a.id,
-    title: a.title,
-    price: a.price,
-    image: a.image_url,
-    style: a.style || "Fantasy",
-    category: a.category || "3D",
-    model_id: a.model_id,
-  }));
 
   return (
     <div className="min-h-screen">
@@ -34,7 +71,12 @@ const MyListedAssets = () => {
           </Link>
         </div>
 
-        {listedAssets.length === 0 ? (
+        {loading ? (
+          <div className="glass rounded-xl p-16 text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Loading your assets...</p>
+          </div>
+        ) : listedAssets.length === 0 ? (
           <div className="glass rounded-xl p-16 text-center">
             <div className="h-16 w-16 rounded-2xl bg-gradient-primary mx-auto flex items-center justify-center mb-5 shadow-glow">
               <ShoppingBag className="h-7 w-7 text-primary-foreground" />
@@ -59,8 +101,11 @@ const MyListedAssets = () => {
                     <h3 className="font-display font-semibold text-base line-clamp-1 hover:text-primary transition-colors">{asset.title}</h3>
                   </Link>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{asset.category}</span>
                     <span className="font-display font-bold text-lg glow-text">${asset.price}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Users className="h-3.5 w-3.5" />
+                    <span className="font-medium text-foreground">{asset.purchases} purchase{asset.purchases !== 1 ? "s" : ""}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Model: <span className="text-foreground">{asset.model_id.slice(0, 8)}…</span>
